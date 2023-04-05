@@ -1,7 +1,7 @@
 # C-Shell-Builder
 
 Use this as a simple project manager for a C project.
-Since I am using this myself, I will try to keep adding features whenever I need them, suggestions are highly appreciated.
+Since I am using this myself, I will try to keep adding features whenever I need them.
 
 ## Usage
 
@@ -36,13 +36,18 @@ When executing the main program or a test, you will also be prompted the exit co
 For installation, you can simply put the two lines of the sample\_bashrc into your .bashrc.<br>
 You also want to create the ~/bin directory and place the c\_build.sh program there.<br>
 Lastly, you must add the fdiv program which can be compiled using `gcc fdiv.c -o fdiv` to ~/bin directory.<br>
-Here is a command to do most things for you:
+Here is a command to do most things for you (this can also be used for updating):
 ```
 cd ~
 mkdir -p bin
+rm -R C-Shell-Builder
 git clone https://github.com/MordorHD/C-Shell-Builder.git
 cd C-Shell-Builder
 gcc fdiv.c -o ~/bin/fdiv
 cp c_build.sh ~/bin/c_build.sh
 echo "Lastly, you can make aliases for ~/bin/c_build.sh like in sample_bashrc"
 ```
+
+## Feature X is missing
+
+If you feel like something is missing or there is an error, please tell me and I will try to improve the script.

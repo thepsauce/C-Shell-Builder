@@ -7,16 +7,16 @@ then
 	echo
 	case $yn in
 		y) ;;
-		*) echo "Cancelled" ; return 0 ;;
+		*) echo "Cancelled" ; exit ;;
 	esac
 	mkdir src
 	mkdir include
 	mkdir build
 	mkdir tests
-	echo -e "#include \"$project_name.h\"\n\nint\nmain(int argc, char **argv)\n{\n\treturn 0;\n}\n" > src/main.c
+	echo -e "#include \"$project_name.h\"\n\nint\nmain(int argc, char **argv)\n{\n\texit 0;\n}\n" > src/main.c
 	echo -e "#ifndef INCLUDED_${project_name^^}_H\n#define INCLUDED_${project_name^^}_H\n\n\n#endif" > include/$project_name.h
 	touch .project
-	return 0
+	exit 0
 fi
 
 # Time the build
@@ -59,11 +59,11 @@ then
 		-l* | -I* | -L*) gcc_links="$gcc_links $1" ;;
 		-t) 
 			shift
-			if [ $# -eq 0 ] ; then echo "expected test program after -t" ; return 1 ; fi
+			if [ $# -eq 0 ] ; then echo "expected test program after -t" ; exit 1 ; fi
 			test_program="$1"
 			;;
 		--) shift ; break ;;
-		-*) echo "Invalid flag $1" ; return 1 ;;
+		-*) echo "Invalid flag $1" ; exit 1 ;;
 		*) break ;;
 		esac
 		shift
@@ -73,7 +73,7 @@ fi
 if [ -n "$test_program" ] && [ -n "$do_execute" ]
 then
 	echo "-x and -t are conflicting"
-	return 1
+	exit 1
 fi
 
 # Collect project information from the .project file
@@ -152,7 +152,7 @@ do
 	if [ -n "$do_rebuild" ] || [ $s -nt $o ]
 	then
 		echo "gcc $gcc_flags_source -c $s -o $o -Iinclude"
-		if ! gcc $gcc_flags_source -c $s -o $o -Iinclude ; then return 1 ; fi
+		if ! gcc $gcc_flags_source -c $s -o $o -Iinclude ; then exit 1 ; fi
 	fi
 done
 
@@ -172,7 +172,7 @@ fi
 if [ -n "$do_update" ]
 then
 	echo "gcc $gcc_flags_build $objects -o out $gcc_links"
-	if !  gcc $gcc_flags_build $objects -o out $gcc_links ; then return 1 ; fi
+	if !  gcc $gcc_flags_build $objects -o out $gcc_links ; then exit 1 ; fi
 	END_TIME=$(date +%s.%N)
 	ELAPSED_TIME=$(~/bin/fdiv $END_TIME $START_TIME)
 	echo -e "build time: \e[36m$ELAPSED_TIME\e[0m seconds"
@@ -184,9 +184,9 @@ if [ -n "$test_program" ]
 then
 	objects="${objects/'build/main.c.o'/} build/$test_program.c.o"
 	echo "gcc $gcc_flags_source -c tests/$test_program.c -o build/$test_program.c.o -Iinclude"
-	if !  gcc $gcc_flags_source  -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then return 1 ; fi
+	if !  gcc $gcc_flags_source  -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then exit 1 ; fi
 	echo "gcc $gcc_flags_build $objects -o test $gcc_links"
-	if !  gcc $gcc_flags_build $objects -o test $gcc_links ; then return 1 ; fi
+	if !  gcc $gcc_flags_build $objects -o test $gcc_links ; then exit 1 ; fi
 	START_TIME=$(date +%s.%N)
 	./test $@
 	exit_code=$?
