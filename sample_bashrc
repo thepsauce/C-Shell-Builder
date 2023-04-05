@@ -1,0 +1,2 @@
+alias c='~/bin/c_build.sh'
+alias cx='~/bin/c_build.sh -x --'
