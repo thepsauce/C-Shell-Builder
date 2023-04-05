@@ -152,7 +152,7 @@ do
 	if [ -n "$do_rebuild" ] || [ $s -nt $o ]
 	then
 		echo "gcc $gcc_flags_source -c $s -o $o -Iinclude"
-		if ! gcc $gcc_flags_source -c $s -o $o -Iinclude ; then exit 1 ; fi
+		if !  gcc $gcc_flags_source -c $s -o $o -Iinclude ; then exit 1 ; fi
 	fi
 done
 
@@ -184,7 +184,7 @@ if [ -n "$test_program" ]
 then
 	objects="${objects/'build/main.c.o'/} build/$test_program.c.o"
 	echo "gcc $gcc_flags_source -c tests/$test_program.c -o build/$test_program.c.o -Iinclude"
-	if !  gcc $gcc_flags_source  -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then exit 1 ; fi
+	if !  gcc $gcc_flags_source -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then exit 1 ; fi
 	echo "gcc $gcc_flags_build $objects -o test $gcc_links"
 	if !  gcc $gcc_flags_build $objects -o test $gcc_links ; then exit 1 ; fi
 	START_TIME=$(date +%s.%N)
