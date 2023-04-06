@@ -12,8 +12,8 @@ Since I am using this myself, I will try to keep adding features whenever I need
 
 ### Meaning of directories
 
-**src:** For project .c files (a main.c is automatically created)<br>
-**include:** For project .h files (a $project\_name.h file is automatically created)<br>
+**src:** For project .c files (a `main.c` is automatically created)<br>
+**include:** For project .h files (a `$project_name.h` file is automatically created)<br>
 **build:** For .o files<br>
 **tests:** For test programs<br>
 
@@ -33,9 +33,9 @@ When executing the main program or a test, you will also be prompted the exit co
 
 ## Installation
 
-For installation, you can simply put the two lines of the `sample\_bashrc` into your `.bashrc`.<br>
-You also want to create the `~/bin` directory and place the `c\_build.sh` program there.<br>
-Lastly, you must add the fdiv program which can be compiled using `gcc fdiv.c -o fdiv` to the `~/bin` directory.<br>
+For installation, you can simply put the two lines of the `sample_bashrc` into your `.bashrc`.<br>
+You also want to create the `~/bin` directory and place the `c_build.sh` program there.<br>
+Lastly, you must add the fsub program which can be compiled using `gcc fsub.c -o fsub` to the `~/bin` directory.<br>
 Here is a command to do most things for you (this can also be used for updating):
 ```
 cd ~
@@ -43,7 +43,7 @@ mkdir -p bin
 rm -R C-Shell-Builder
 git clone https://github.com/MordorHD/C-Shell-Builder.git
 cd C-Shell-Builder
-gcc -O3 fdiv.c -o ~/bin/fdiv
+gcc -O3 fsub.c -o ~/bin/fsub
 cp c_build.sh ~/bin/c_build.sh
 echo "Lastly, you can make aliases for ~/bin/c_build.sh like in sample_bashrc"
 ```
