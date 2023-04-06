@@ -38,13 +38,13 @@ You also want to create the `~/bin` directory and place the `c_build.sh` program
 Lastly, you must add the fsub program which can be compiled using `gcc fsub.c -o fsub` to the `~/bin` directory.<br>
 Here is a command to do most things for you (this can also be used for updating):
 ```
-cd ~
-mkdir -p bin
-rm -R C-Shell-Builder
-git clone https://github.com/MordorHD/C-Shell-Builder.git
-cd C-Shell-Builder
-gcc -O3 fsub.c -o ~/bin/fsub
-cp c_build.sh ~/bin/c_build.sh
+cd ~ &&
+mkdir -p bin &&
+rm -rf C-Shell-Builder &&
+git clone https://github.com/MordorHD/C-Shell-Builder.git &&
+cd C-Shell-Builder &&
+gcc -O3 fsub.c -o ~/bin/fsub &&
+cp c_build.sh ~/bin/c_build.sh &&
 echo "Lastly, you can make aliases for ~/bin/c_build.sh like in sample_bashrc"
 ```
 
