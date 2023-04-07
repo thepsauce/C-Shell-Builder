@@ -26,33 +26,25 @@ gcc_flags=
 # linker options
 gcc_links=
 # if the program should be executed at the end
-do_execute=
-# if the .project file should be used
-do_overwrite=
+do_execute=false
 # if the out file should be rebuilt
-do_update=
+do_update=false
 # if everything should be rebuilt
-do_rebuild=
-# -t [name] can be used to test a program instead of running main.c
+do_rebuild=false
+# -test [name] can be used to test a program instead of running main.c
 test_program=
 # if the program runs longer than this time, it's terminated
 max_runtime=
-# Check for program flags
-# -x Execute the program
-# -t [name] Build and execute a test program
-# -o Ignore the .project file
-# -r Rebuild the source files
-# -B alias for -r
-# -g -O* -l* -I* -L* -f* Flags for gcc
+# exclude the specified items from the .project file
+exclude=
+# flags 
 if [ "${1:0:1}" = - ]
 then
 	while [ $# -ne 0 ]
 	do
 		case "$1" in
-		-x) do_execute=1 ;;
-		-o) do_overwrite=1 ;;
-		-r) do_rebuild=1 ;;
-		-B) do_rebuild=1 ;;
+		-x) do_execute=true ;;
+		-B) do_rebuild=true ;;
 		-test)
 			shift
 			if [ $# -eq 0 ] ; then echo "expected test program after -test" ; exit 1 ; fi
@@ -63,8 +55,14 @@ then
 			if [ $# -eq 0 ] ; then echo "expected time value (e.g. 1s or 2h (see timeout --help)) after -time" ; exit 1 ; fi
 			max_runtime="$1"
 			;;
+		-e)
+			shift
+			if [ $# -eq 0 ] ; then echo "expected comma separated exclude list after -e" ; exit 1 ; fi
+			do_rebuild=true
+			exclude="$1"
+			;;
 		-l* | -I* | -L*) gcc_links="$gcc_links $1" ;;
-		-O* | -pg | -g | -f*) gcc_flags="$gcc_flags $1" ;;
+		-g | -pg | -O* | -f* | -W* | -D* | -U* | -m* | -std=*) gcc_flags="$gcc_flags $1" ;;
 		--) shift ; break ;;
 		-*) echo "can not recognize flag $1" ; exit 1 ;;
 		*) break ;;
@@ -73,7 +71,7 @@ then
 	done
 fi
 
-if [ -n "$test_program" ] && [ -n "$do_execute" ]
+if [ -n "$test_program" ] && $do_execute
 then
 	echo "-x and -t are conflicting"
 	exit 1
@@ -82,7 +80,7 @@ fi
 # Collect project information from the .project file
 old_gcc_flags=
 old_gcc_links=
-if [ -f .project ] && [ -z "$do_overwrite" ]
+if [ -f .project ]
 then
 	exec 6<.project
 	read old_gcc_flags <&6
@@ -94,8 +92,8 @@ then
 		*$f*) ;;
 		*)
 			old_gcc_flags="$old_gcc_flags $f"
-			do_update=1
-			do_rebuild=1
+			do_update=true
+			do_rebuild=true
 			;;
 		esac
 	done
@@ -105,15 +103,22 @@ then
 		*$f*) ;;
 		*)
 			old_gcc_links="$old_gcc_links $f"
-			do_update=1
+			do_update=true
 			;;
 		esac
 	done
+	IFS=,
+	for f in $exclude
+	do
+		old_gcc_flags=${old_gcc_flags/$f}
+		old_gcc_links=${old_gcc_links/$f}
+	done
+	unset IFS
 	gcc_flags="$old_gcc_flags"
 	gcc_links="$old_gcc_links"
 else
-	do_update=1
-	do_rebuild=1
+	do_update=true
+	do_rebuild=true
 fi
 # Write back the information
 echo -e "$gcc_flags\n$gcc_links" > .project
@@ -123,19 +128,19 @@ for file in include/*
 do
 	if [ "$file" -nt "out" ]
 	then
-		do_rebuild=1
+		do_rebuild=true
 		break
 	fi
 done
 
 # If the main header file changed, rebuild it
-if [ -n "$do_rebuild" ]
+if $do_rebuild
 then
 	echo "gcc \"include/$project_name.h\" -Iinclude"
 	gcc "include/$project_name.h" -Iinclude
 elif [ "include/$project_name.h" -nt "out" ]
 then
-	do_rebuild=1
+	do_rebuild=true
 	echo "gcc \"include/$project_name.h\" -Iinclude"
 	gcc "include/$project_name.h" -Iinclude
 fi
@@ -147,27 +152,15 @@ for s in $sources
 do
 	o=build/${s:4}.o
 	objects="$objects $o"
-	if [ -n "$do_rebuild" ] || [ $s -nt $o ]
+	if $do_rebuild || [ $s -nt $o ]
 	then
 		echo "gcc $gcc_flags -c $s -o $o -Iinclude"
 		if !  gcc $gcc_flags -c $s -o $o -Iinclude ; then exit 1 ; fi
 	fi
 done
 
-# Check if new object files were added
-if [ -z "$do_update" ]
-then
-	for o in $objects
-	do
-		if [ $o -nt out ]
-		then
-			do_update=1
-			break
-		fi
-	done
-fi
 # Building final program
-if [ -n "$do_update" ]
+if $do_update
 then
 	echo "gcc $gcc_flags $objects -o out $gcc_links"
 	if !  gcc $gcc_flags $objects -o out $gcc_links ; then exit 1 ; fi
@@ -191,7 +184,7 @@ then
 	echo "gcc $gcc_flags $objects -o test $gcc_links"
 	if !  gcc $gcc_flags $objects -o test $gcc_links ; then exit 1 ; fi
 	program=test
-elif [ -n "$do_execute" ]
+elif $do_execute
 then
 	program=out
 fi
