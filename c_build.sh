@@ -92,7 +92,6 @@ then
 		*$f*) ;;
 		*)
 			old_gcc_flags="$old_gcc_flags $f"
-			do_update=true
 			do_rebuild=true
 			;;
 		esac
@@ -117,7 +116,6 @@ then
 	gcc_flags="$old_gcc_flags"
 	gcc_links="$old_gcc_links"
 else
-	do_update=true
 	do_rebuild=true
 fi
 # Write back the information
@@ -160,7 +158,7 @@ do
 done
 
 # Building final program
-if $do_update
+if $do_update || $do_rebuild
 then
 	echo "gcc $gcc_flags $objects -o out $gcc_links"
 	if !  gcc $gcc_flags $objects -o out $gcc_links ; then exit 1 ; fi
