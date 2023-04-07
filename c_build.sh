@@ -35,6 +35,8 @@ do_update=
 do_rebuild=
 # -t [name] can be used to test a program instead of running main.c
 test_program=
+# if the program runs longer than this time, it's terminated
+max_runtime=
 # Check for program flags
 # -x Execute the program
 # -t [name] Build and execute a test program
@@ -51,10 +53,15 @@ then
 		-o) do_overwrite=1 ;;
 		-r) do_rebuild=1 ;;
 		-B) do_rebuild=1 ;;
-		-t) 
+		-test)
 			shift
-			if [ $# -eq 0 ] ; then echo "expected test program after -t" ; exit 1 ; fi
+			if [ $# -eq 0 ] ; then echo "expected test program after -test" ; exit 1 ; fi
 			test_program="$1"
+			;;
+		-time)
+			shift
+			if [ $# -eq 0 ] ; then echo "expected time value (e.g. 1s or 2h (see timeout --help)) after -time" ; exit 1 ; fi
+			max_runtime="$1"
 			;;
 		-l* | -I* | -L*) gcc_links="$gcc_links $1" ;;
 		-O* | -pg | -g | -f*) gcc_flags="$gcc_flags $1" ;;
@@ -99,6 +106,7 @@ then
 		*)
 			old_gcc_links="$old_gcc_links $f"
 			do_update=1
+			;;
 		esac
 	done
 	gcc_flags="$old_gcc_flags"
@@ -169,29 +177,38 @@ then
 else
 	echo "Everything is up to date!"
 fi
-# Building and executing test program
+
+# program to execute
+program=
+
+# Building test program
 if [ -n "$test_program" ]
 then
+	# exclude main object and include test object
 	objects="${objects/'build/main.c.o'/} build/$test_program.c.o"
 	echo "gcc $gcc_flags -c tests/$test_program.c -o build/$test_program.c.o -Iinclude"
 	if !  gcc $gcc_flags -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then exit 1 ; fi
 	echo "gcc $gcc_flags $objects -o test $gcc_links"
 	if !  gcc $gcc_flags $objects -o test $gcc_links ; then exit 1 ; fi
-	START_TIME=$(date +%s.%N)
-	./test $@
-	exit_code=$?
-	END_TIME=$(date +%s.%N)
-	ELAPSED_TIME=$(~/bin/fdiv $END_TIME $START_TIME)
-	echo -e "exit code: \e[36m$exit_code\e[0m; elapsed time: \e[36m$ELAPSED_TIME\e[0m seconds"
+	program=test
+elif [ -n "$do_execute" ]
+then
+	program=out
 fi
+
 # Executing if wanted
-if [ -n "$do_execute" ]
+if [ -n "$program" ]
 then
 	START_TIME=$(date +%s.%N)
-	./out $@
-	exit_code=$?
+	if [ -n "$max_runtime" ]
+	then
+		timeout "$max_runtime" ./$program $@
+	else
+		./$program $@
+	fi
+	EXIT_CODE=$?
 	END_TIME=$(date +%s.%N)
 	ELAPSED_TIME=$(~/bin/fdiv $END_TIME $START_TIME)
-	echo -e "exit code: \e[36m$exit_code\e[0m; elapsed time: \e[36m$ELAPSED_TIME\e[0m seconds"
+	echo -e "exit code: \e[36m$EXIT_CODE\e[0m; elapsed time: \e[36m$ELAPSED_TIME\e[0m seconds"
 fi
 
