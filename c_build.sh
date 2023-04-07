@@ -21,10 +21,8 @@ fi
 
 # Time the build
 START_TIME=$(date +%s.%N)
-# flags for building source files
-gcc_flags_source=
-# flags for making the final out file
-gcc_flags_build=
+# flags for building
+gcc_flags=
 # linker options
 gcc_links=
 # if the program should be executed at the end
@@ -53,17 +51,15 @@ then
 		-o) do_overwrite=1 ;;
 		-r) do_rebuild=1 ;;
 		-B) do_rebuild=1 ;;
-		-f*) gcc_flags_source="$gcc_flags_source $1" ; gcc_flags_build="$gcc_flags_build $1" ;;
-		-g) gcc_flags_source="$gcc_flags_source -g" ;;
-		-O*) gcc_flags_source="$gcc_flags_soure $1" ;;
-		-l* | -I* | -L*) gcc_links="$gcc_links $1" ;;
 		-t) 
 			shift
 			if [ $# -eq 0 ] ; then echo "expected test program after -t" ; exit 1 ; fi
 			test_program="$1"
 			;;
+		-l* | -I* | -L*) gcc_links="$gcc_links $1" ;;
+		-O* | -pg | -g | -f*) gcc_flags="$gcc_flags $1" ;;
 		--) shift ; break ;;
-		-*) echo "Invalid flag $1" ; exit 1 ;;
+		-*) echo "can not recognize flag $1" ; exit 1 ;;
 		*) break ;;
 		esac
 		shift
@@ -77,32 +73,23 @@ then
 fi
 
 # Collect project information from the .project file
-old_gcc_flags_source=
-old_gcc_flags_build=
+old_gcc_flags=
 old_gcc_links=
 if [ -f .project ] && [ -z "$do_overwrite" ]
 then
 	exec 6<.project
-	read old_gcc_flags_source <&6
-	read old_gcc_flags_build <&6
+	read old_gcc_flags <&6
 	read old_gcc_links <&6
 	# Check if any gcc flags have changed
-	for f in $gcc_flags_source
+	for f in $gcc_flags
 	do
-		case "$old_gcc_flags_source" in
+		case "$old_gcc_flags" in
 		*$f*) ;;
 		*)
-			old_gcc_flags_source="$old_gcc_flags_source $f" ;
-			do_rebuild=1 ;;
-		esac
-	done
-	for f in $gcc_flags_build
-	do
-		case "$old_gcc_flags_build" in
-		*$f*) ;;
-		*)
-			old_gcc_flags_build="$old_gcc_flags_build $f"
+			old_gcc_flags="$old_gcc_flags $f"
 			do_update=1
+			do_rebuild=1
+			;;
 		esac
 	done
 	for f in $gcc_links
@@ -114,15 +101,14 @@ then
 			do_update=1
 		esac
 	done
-	gcc_flags_source="$old_gcc_flags_source"
-	gcc_flags_build="$old_gcc_flags_build"
+	gcc_flags="$old_gcc_flags"
 	gcc_links="$old_gcc_links"
 else
 	do_update=1
 	do_rebuild=1
 fi
 # Write back the information
-echo -e "$gcc_flags_source\n$gcc_flags_build\n$gcc_links" > .project
+echo -e "$gcc_flags\n$gcc_links" > .project
 
 # Check if any header file changed
 for file in include/*
@@ -135,11 +121,15 @@ do
 done
 
 # If the main header file changed, rebuild it
-if [ "include/$project_name.h" -nt "out" ]
+if [ -n "$do_rebuild" ]
+then
+	echo "gcc \"include/$project_name.h\" -Iinclude"
+	gcc "include/$project_name.h" -Iinclude
+elif [ "include/$project_name.h" -nt "out" ]
 then
 	do_rebuild=1
-	echo "gcc \"$file\" -Iinclude"
-	gcc "$file" -Iinclude
+	echo "gcc \"include/$project_name.h\" -Iinclude"
+	gcc "include/$project_name.h" -Iinclude
 fi
 
 # Collect source files and build all object files
@@ -151,8 +141,8 @@ do
 	objects="$objects $o"
 	if [ -n "$do_rebuild" ] || [ $s -nt $o ]
 	then
-		echo "gcc $gcc_flags_source -c $s -o $o -Iinclude"
-		if !  gcc $gcc_flags_source -c $s -o $o -Iinclude ; then exit 1 ; fi
+		echo "gcc $gcc_flags -c $s -o $o -Iinclude"
+		if !  gcc $gcc_flags -c $s -o $o -Iinclude ; then exit 1 ; fi
 	fi
 done
 
@@ -171,8 +161,8 @@ fi
 # Building final program
 if [ -n "$do_update" ]
 then
-	echo "gcc $gcc_flags_build $objects -o out $gcc_links"
-	if !  gcc $gcc_flags_build $objects -o out $gcc_links ; then exit 1 ; fi
+	echo "gcc $gcc_flags $objects -o out $gcc_links"
+	if !  gcc $gcc_flags $objects -o out $gcc_links ; then exit 1 ; fi
 	END_TIME=$(date +%s.%N)
 	ELAPSED_TIME=$(~/bin/fdiv $END_TIME $START_TIME)
 	echo -e "build time: \e[36m$ELAPSED_TIME\e[0m seconds"
@@ -183,10 +173,10 @@ fi
 if [ -n "$test_program" ]
 then
 	objects="${objects/'build/main.c.o'/} build/$test_program.c.o"
-	echo "gcc $gcc_flags_source -c tests/$test_program.c -o build/$test_program.c.o -Iinclude"
-	if !  gcc $gcc_flags_source -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then exit 1 ; fi
-	echo "gcc $gcc_flags_build $objects -o test $gcc_links"
-	if !  gcc $gcc_flags_build $objects -o test $gcc_links ; then exit 1 ; fi
+	echo "gcc $gcc_flags -c tests/$test_program.c -o build/$test_program.c.o -Iinclude"
+	if !  gcc $gcc_flags -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then exit 1 ; fi
+	echo "gcc $gcc_flags $objects -o test $gcc_links"
+	if !  gcc $gcc_flags $objects -o test $gcc_links ; then exit 1 ; fi
 	START_TIME=$(date +%s.%N)
 	./test $@
 	exit_code=$?
