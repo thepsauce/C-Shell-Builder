@@ -154,6 +154,7 @@ do
 	then
 		echo "gcc $gcc_flags -c $s -o $o -Iinclude"
 		if !  gcc $gcc_flags -c $s -o $o -Iinclude ; then exit 1 ; fi
+		do_update=true
 	fi
 done
 
