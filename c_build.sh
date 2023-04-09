@@ -13,7 +13,7 @@ then
 	mkdir include
 	mkdir build
 	mkdir tests
-	echo -e "#include \"$project_name.h\"\n\nint\nmain(int argc, char **argv)\n{\n\texit 0;\n}\n" > src/main.c
+	echo -e "#include \"$project_name.h\"\n\nint\nmain(int argc, char **argv)\n{\n\treturn 0;\n}\n" > src/main.c
 	echo -e "#ifndef INCLUDED_${project_name^^}_H\n#define INCLUDED_${project_name^^}_H\n\n\n#endif" > include/$project_name.h
 	touch .project
 	exit 0
@@ -122,9 +122,10 @@ fi
 echo -e "$gcc_flags\n$gcc_links" > .project
 
 # Check if any header file changed
-for file in include/*
+headers=$(find include -name "*.h")
+for h in $headers
 do
-	if [ "$file" -nt "out" ]
+	if [ "$h" -nt "out" ]
 	then
 		do_rebuild=true
 		break
@@ -144,7 +145,7 @@ then
 fi
 
 # Collect source files and build all object files
-sources=$(find src -name '*.c')
+sources=$(find src -name "*.c")
 objects=
 for s in $sources
 do
@@ -152,6 +153,7 @@ do
 	objects="$objects $o"
 	if $do_rebuild || [ $s -nt $o ]
 	then
+		mkdir -p $(dirname "$o")
 		echo "gcc $gcc_flags -c $s -o $o -Iinclude"
 		if !  gcc $gcc_flags -c $s -o $o -Iinclude ; then exit 1 ; fi
 		do_update=true
