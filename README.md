@@ -27,29 +27,29 @@ Since I am using this myself, I will try to keep adding features whenever I need
 Compiling is as easy as running the c command. You may add one of the following flags:<br>
 **-x:** Execute the program<br>
 **-B:** Rebuild the source files<br>
-**-test [name]:** Build and execute a test program (the name must be the file name without file extension inside the tests directory)<br>
-**-time [amount]**: Execute the program but no longer than given time (based on the timeout command)<br>
-**-e [a,b,...]** Specify gcc flags to exclude from the `.project` file<br>
+**-test *name*:** Build and execute a test program (the name must be the file name without file extension inside the tests directory)<br>
+**-time *amount***: Execute the program but no longer than given time (based on the timeout command)<br>
+**-e *a,b,...*** Specify gcc flags to exclude from the `.project` file<br>
 **-g -pg -O\* -l\* -I\* -L\* -f\* -W\* -D\* -U\* -m\* -std=\*:** Flags for gcc<br>
+**--home-install *all|include|bin***: Move project files into the `$HOME/mylibs` directory
 
 When executing the main program or a test, you will also be prompted the exit code and runtime of the program
 
 ## Installation
 
-For installation, you can simply put the two lines of the `sample_bashrc` into your `.bashrc`.<br>
-You also want to create the `~/bin` directory and place the `c_build.sh` program there.<br>
-Lastly, you must add the fsub program which can be compiled using `gcc fsub.c -o fsub` to the `~/bin` directory.<br>
-Here is a command to do most things for you (this can also be used for updating):
+For installation, you can simply put the three lines of the `sample_bashrc` into your `.bashrc` and run the following command:<br>
 ```
+LASTDIR="$(pwd)" &&
+mkdir -p ~/mylibs/bin &&
 cd ~ &&
-mkdir -p bin &&
-rm -Irf C-Shell-Builder &&
 git clone https://github.com/MordorHD/C-Shell-Builder.git &&
-cd C-Shell-Builder &&
-gcc -O3 fsub.c -o ~/bin/fsub &&
-cp c_build.sh ~/bin/c_build.sh &&
-echo "Lastly, you can make aliases for ~/bin/c_build.sh like in sample_bashrc"
+cd ~/mylibs/bin &&
+gcc -O3 ~/C-Shell-Builder/fsub.c -o fsub &&
+cp ~/C-Shell-Builder/c_build.sh ./ &&
+cd "$LASTDIR"
 ```
+Now you should be able to use the `c` and `cx` commands.<br>
+If you want to update, simply type `c -update` wherever; it is recommended to keep the `C-Shell-Builder` directory around somewhere in your home directory for faster downloads.
 
 ## Feature X is missing
 

@@ -1,6 +1,38 @@
 #!/bin/bash
 
+if [ $# -ne 0 ] && [ "$1" = "-update" ]
+then
+	set -e
+	LASTDIR="$(pwd)"
+	SEARCHFAILED=true
+
+	GITDIR=$(find ~ -type d -name "C-Shell-Builder")
+	mkdir -p ~/mylibs/bin
+	if [ -d "$GITDIR/.git" ]
+	then
+		cd "$GITDIR"
+		SEARCHFAILED=false
+		git pull
+	else
+		git clone https://github.com/MordorHD/C-Shell-Builder.git
+		GITDIR="C-Shell-Builder"
+	fi
+
+	cd ~/mylibs/bin
+	gcc -O3 "$GITDIR/fsub.c" -o fsub
+	cp "$GITDIR/c_build.sh" ./
+
+	if $SEARCHFAILED
+	then
+		rm -rf C-Shell-Builder
+	fi
+
+	cd "$LASTDIR"
+	exit 0
+fi
+
 project_name=$(basename "$(pwd)")
+project_name=${project_name,,}
 if [ ! -f .project ]
 then
 	read -n 1 -p "First call of c, do you want to initialize the project '$project_name'? [yn] " yn
@@ -27,6 +59,8 @@ gcc_flags=
 gcc_links=
 # if the program should be executed at the end
 do_execute=false
+# program arguments for the program to be executed
+args=
 # if the out file should be rebuilt
 do_update=false
 # if everything should be rebuilt
@@ -37,39 +71,54 @@ test_program=
 max_runtime=
 # exclude the specified items from the .project file
 exclude=
+home_install=
 # flags 
-if [ "${1:0:1}" = - ]
-then
-	while [ $# -ne 0 ]
-	do
-		case "$1" in
-		-x) do_execute=true ;;
-		-B) do_rebuild=true ;;
-		-test)
-			shift
-			if [ $# -eq 0 ] ; then echo "expected test program after -test" ; exit 1 ; fi
-			test_program="$1"
-			;;
-		-time)
-			shift
-			if [ $# -eq 0 ] ; then echo "expected time value (e.g. 1s or 2h (see timeout --help)) after -time" ; exit 1 ; fi
-			max_runtime="$1"
-			;;
-		-e)
-			shift
-			if [ $# -eq 0 ] ; then echo "expected comma separated exclude list after -e" ; exit 1 ; fi
-			do_rebuild=true
-			exclude="$1"
-			;;
-		-l* | -I* | -L*) gcc_links="$gcc_links $1" ;;
-		-g | -pg | -O* | -f* | -W* | -D* | -U* | -m* | -std=*) gcc_flags="$gcc_flags $1" ;;
-		--) shift ; break ;;
-		-*) echo "can not recognize flag $1" ; exit 1 ;;
-		*) break ;;
-		esac
+while [ $# -ne 0 ]
+do
+	case "$1" in
+	-x) do_execute=true ;;
+	-B) do_rebuild=true ;;
+	-test)
 		shift
-	done
-fi
+		if [ $# -eq 0 ] ; then echo "expected test program after -test" ; exit 1 ; fi
+		test_program="$1"
+		;;
+	-time)
+		shift
+		if [ $# -eq 0 ] ; then echo "expected time value (e.g. 1s or 2h (see timeout --help)) after -time" ; exit 1 ; fi
+		max_runtime="$1"
+		;;
+	-e)
+		shift
+		if [ $# -eq 0 ] ; then echo "expected comma separated exclude list after -e" ; exit 1 ; fi
+		do_rebuild=true
+		exclude="$1"
+		;;
+	-l* | -I* | -L*) gcc_links="$gcc_links $1" ;;
+	-g | -pg | -O* | -f* | -W* | -D* | -U* | -m* | -std=*) gcc_flags="$gcc_flags $1" ;;
+	--home-install)
+		shift
+		if [ $# -eq 0 ] || ( [ "$1" != "all" ] && [ "$1" != "include" ] && [ "$1" != "bin" ] )
+		then echo "expected either 'all', 'include' or 'bin' after '--home-install'" ; exit 1 ; fi
+		if [ "$1" = "all" ]
+		then
+			home_install="include bin"
+		else
+			home_install="$1"
+		fi
+		;;
+	--) shift ; break ;;
+	-*) echo "can not recognize flag $1" ; exit 1 ;;
+	*) break ;;
+	esac
+	shift
+done
+
+while [ $# -ne 0 ]
+do
+	args="$args \"$1\""
+	shift
+done
 
 if [ -n "$test_program" ] && $do_execute
 then
@@ -166,7 +215,7 @@ then
 	echo "gcc $gcc_flags $objects -o out $gcc_links"
 	if !  gcc $gcc_flags $objects -o out $gcc_links ; then exit 1 ; fi
 	END_TIME=$(date +%s.%N)
-	ELAPSED_TIME=$(~/bin/fdiv $END_TIME $START_TIME)
+	ELAPSED_TIME=$(fsub $END_TIME $START_TIME)
 	echo -e "build time: \e[36m$ELAPSED_TIME\e[0m seconds"
 else
 	echo "Everything is up to date!"
@@ -175,7 +224,7 @@ fi
 # program to execute
 program=
 
-# Building test program
+# Building test program if needed
 if [ -n "$test_program" ]
 then
 	# exclude main object and include test object
@@ -190,19 +239,38 @@ then
 	program=out
 fi
 
+# Home installing if wanted
+for i in  $home_install
+do
+	case $i in
+	include )
+		mkdir -p "$HOME/mylibs/include/"
+		cp -i include/*.h "$HOME/mylibs/include/"
+		;;
+	bin )
+		mkdir -p "$HOME/mylibs/bin/"
+		cp -i out "$HOME/mylibs/bin/$project_name"
+		;;
+	esac
+done
+if [ -n "$home_install" ]
+then
+	echo "Finished home install '$home_install'"
+fi
+
 # Executing if wanted
 if [ -n "$program" ]
 then
 	START_TIME=$(date +%s.%N)
 	if [ -n "$max_runtime" ]
 	then
-		timeout "$max_runtime" ./$program $@
+		timeout "$max_runtime" ./$program $args
 	else
-		./$program $@
+		./$program $args
 	fi
 	EXIT_CODE=$?
 	END_TIME=$(date +%s.%N)
-	ELAPSED_TIME=$(~/bin/fdiv $END_TIME $START_TIME)
+	ELAPSED_TIME=$(fsub $END_TIME $START_TIME)
 	echo -e "exit code: \e[36m$EXIT_CODE\e[0m; elapsed time: \e[36m$ELAPSED_TIME\e[0m seconds"
 fi
 
