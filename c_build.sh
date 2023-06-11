@@ -72,7 +72,7 @@ max_runtime=
 # exclude the specified items from the .project file
 exclude=
 home_install=
-# flags 
+# flags
 while [ $# -ne 0 ]
 do
 	case "$1" in
@@ -170,37 +170,40 @@ fi
 # Write back the information
 echo -e "$gcc_flags\n$gcc_links" > .project
 
-# Check if any header file changed
-headers=$(find include -name "*.h")
-for h in $headers
-do
-	if [ "$h" -nt "out" ]
-	then
-		do_rebuild=true
-		break
-	fi
-done
+headers=$(find . -name "*.h")
+most_recent_header=
+sources=$(find src -name "*.c")
+objects=
+# program to execute (either test program or main program)
+program=
+
+# Source file must be updated in these cases:
+# 1. They are more recent than their object file
+# 2. Any header file is more recent than they are
+# 3. Rebuild was requested
 
 # If the main header file changed, rebuild it
-if $do_rebuild
+if $do_rebuild || [ "include/$project_name.h" -nt "include/$project_name.h.gch" ]
 then
-	echo "gcc \"include/$project_name.h\" -Iinclude"
-	gcc "include/$project_name.h" -Iinclude
-elif [ "include/$project_name.h" -nt "out" ]
-then
-	do_rebuild=true
 	echo "gcc \"include/$project_name.h\" -Iinclude"
 	gcc "include/$project_name.h" -Iinclude
 fi
 
-# Collect source files and build all object files
-sources=$(find src -name "*.c")
-objects=
+# Find most recent header file
+for h in $headers
+do
+	if [ -z "$most_recent_header" ] || [ "$most_recent_header" -ot "$h" ]
+	then
+		most_recent_header=h
+	fi
+done
+
+# Collect and build all object files
 for s in $sources
 do
 	o=build/${s:4}.o
 	objects="$objects $o"
-	if $do_rebuild || [ $s -nt $o ]
+	if $do_rebuild || [ "$s" -nt "$o" ] || [ "$s" -ot "$most_recent_header" ]
 	then
 		mkdir -p $(dirname "$o")
 		echo "gcc $gcc_flags -c $s -o $o -Iinclude"
@@ -221,16 +224,13 @@ else
 	echo "Everything is up to date!"
 fi
 
-# program to execute
-program=
-
 # Building test program if needed
 if [ -n "$test_program" ]
 then
 	# exclude main object and include test object
-	objects="${objects/'build/main.c.o'/} build/$test_program.c.o"
-	echo "gcc $gcc_flags -c tests/$test_program.c -o build/$test_program.c.o -Iinclude"
-	if !  gcc $gcc_flags -c tests/$test_program.c -o build/$test_program.c.o -Iinclude ; then exit 1 ; fi
+	objects="${objects/'build/main.c.o'/} build/tests_$test_program.c.o"
+	echo "gcc $gcc_flags -c tests/$test_program.c -o build/tests_$test_program.c.o -Iinclude"
+	if !  gcc $gcc_flags -c tests/$test_program.c -o build/tests_$test_program.c.o -Iinclude ; then exit 1 ; fi
 	echo "gcc $gcc_flags $objects -o test $gcc_links"
 	if !  gcc $gcc_flags $objects -o test $gcc_links ; then exit 1 ; fi
 	program=test
