@@ -46,7 +46,9 @@ then
 	mkdir build
 	mkdir tests
 	echo -e "#include \"$project_name.h\"\n\nint\nmain(int argc, char **argv)\n{\n\treturn 0;\n}\n" > src/main.c
-	echo -e "#ifndef INCLUDED_${project_name^^}_H\n#define INCLUDED_${project_name^^}_H\n\n\n#endif" > include/$project_name.h
+	c_include=${project_name^^}
+	c_include=${c_include//-/_}
+	echo -e "#ifndef INCLUDED_${c_include}_H\n#define INCLUDED_${c_include}_H\n\n\n#endif" > include/$project_name.h
 	touch .project
 	exit 0
 fi
@@ -116,7 +118,7 @@ done
 
 while [ $# -ne 0 ]
 do
-	args="$args \"$1\""
+	args="$args $1"
 	shift
 done
 
